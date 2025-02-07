@@ -70,12 +70,14 @@ try:
     config_file = {
         key: value.strip() if isinstance(value, str) else value
         for key, value in vars(settings).items()
+        if not key.startswith("__")
     }
-except Exception:
+except ModuleNotFoundError:
     log_error(
         "The 'config.py' file is missing! Falling back to environment variables.",
     )
     config_file = {}
+
 
 # Fallback to environment variables if BOT_TOKEN is not set
 BOT_TOKEN = config_file.get("BOT_TOKEN") or os.getenv("BOT_TOKEN")
@@ -86,37 +88,33 @@ if not BOT_TOKEN:
 BOT_ID = BOT_TOKEN.split(":", 1)[0]
 
 # Fallback to environment variables for DATABASE_URL
-DATABASE_URL = config_file.get("DATABASE_URL", "") or os.getenv("DATABASE_URL", "")
+DATABASE_URL = (
+    config_file.get("DATABASE_URL", "").strip()
+    or os.getenv("DATABASE_URL", "").strip()
+)
 
 if DATABASE_URL:
     try:
         conn = MongoClient(DATABASE_URL, server_api=ServerApi("1"))
         db = conn.luna
+        old_config = db.settings.deployConfig.find_one({"_id": BOT_ID}, {"_id": 0})
         config_dict = db.settings.config.find_one({"_id": BOT_ID})
-        if config_dict is not None:
-            config_file["UPSTREAM_REPO"] = config_dict.get(
-                "UPSTREAM_REPO",
-                config_file.get("UPSTREAM_REPO"),
-            )
-            config_file["UPSTREAM_BRANCH"] = config_dict.get(
-                "UPSTREAM_BRANCH",
-                config_file.get("UPSTREAM_BRANCH"),
-            )
+        if (
+            (old_config is not None and old_config == config_file)
+            or old_config is None
+        ) and config_dict is not None:
+            config_file["UPSTREAM_REPO"] = config_dict["UPSTREAM_REPO"]
+            config_file["UPSTREAM_BRANCH"] = config_dict["UPSTREAM_BRANCH"]
         conn.close()
     except Exception as e:
         log_error(f"Database ERROR: {e}")
 
-UPSTREAM_REPO = (
-    config_file.get("UPSTREAM_REPO", "")
-    or os.getenv("UPSTREAM_REPO", "")
-    or "https://github.com/samudhan2008/Aeon-MLTB"
+UPSTREAM_REPO = config_file.get(
+    "UPSTREAM_REPO",
+    "https://github.com/samudhan2008/MLTB",
 )
 
-UPSTREAM_BRANCH = (
-    config_file.get("UPSTREAM_BRANCH", "")
-    or os.getenv("UPSTREAM_BRANCH", "")
-    or "main"
-)
+UPSTREAM_BRANCH = config_file.get("UPSTREAM_BRANCH", "") or "main"
 
 if UPSTREAM_REPO:
     if path.exists(".git"):
