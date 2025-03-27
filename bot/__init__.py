@@ -115,7 +115,7 @@ sabnzbd_client = SabnzbdClient(
     api_key="mltb",
     port="8070",
 )
-subprocess.run(["xnox", "-d", f"--profile={os.getcwd()}"], check=False)
+#subprocess.run(["xnox", "-d", f"--profile={os.getcwd()}"], check=False)
 subprocess.run(
     [
         "xnzb",
